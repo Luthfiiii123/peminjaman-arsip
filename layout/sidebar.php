@@ -1,19 +1,40 @@
 <?php
-// Pastikan session sudah start di file induk
+// Pastikan session sudah start di file induk, atau uncomment jika perlu
 // session_start(); 
 
-$base_url = "http://localhost/peminjaman-arsip/";
+$base_url = "http://localhost/peminjaman-arsip"; // Hapus slash di akhir biar rapi saat digabung
 
-// Helper function untuk active state
-$active = function($file) {
-    return strpos($_SERVER['PHP_SELF'], $file) !== false ? 'active' : '';
-};
-
-// Cek file saat ini untuk membuka dropdown otomatis
+// Cek file saat ini
 $current_file = basename($_SERVER['PHP_SELF']);
-$arsip_active = in_array($current_file, ['arsip-vital.php','arsip_permanen.php','arsip_aktif.php','arsip_inaktif.php']);
-$pengawasan_active = in_array($current_file, ['unit_pengolah.php','unit_kearsipan.php']);
-$rekap_active = in_array($current_file, ['rekap_arsip.php','rekap_peminjaman.php']);
+
+// --- LOGIKA BUKA DROPDOWN (PARENT) ---
+// Kita gunakan strpos (pencarian teks) agar 'arsip-vital-tambah.php' 
+// tetap dianggap bagian dari 'arsip-vital'
+
+// 1. Menu Penyimpanan Arsip
+$arsip_active = (
+    strpos($current_file, 'arsip-vital') !== false || 
+    strpos($current_file, 'arsip-permanen') !== false || 
+    strpos($current_file, 'arsip_aktif') !== false || 
+    strpos($current_file, 'arsip_inaktif') !== false
+);
+
+// 2. Menu Pengawasan
+$pengawasan_active = (
+    strpos($current_file, 'unit_pengolah') !== false || 
+    strpos($current_file, 'unit_kearsipan') !== false
+);
+
+// 3. Menu Rekap
+$rekap_active = (
+    strpos($current_file, 'rekap_arsip') !== false || 
+    strpos($current_file, 'rekap_peminjaman') !== false
+);
+
+// Helper function simple untuk active link
+$active = function($keyword) use ($current_file) {
+    return strpos($current_file, $keyword) !== false ? 'active' : '';
+};
 ?>
 
 <style>
@@ -149,7 +170,7 @@ $rekap_active = in_array($current_file, ['rekap_arsip.php','rekap_peminjaman.php
                 <span>Arsip Vital</span>
             </a>
 
-            <a href="<?= $base_url ?>/arsip_permanen.php" class="menu-item <?= $current_file == 'arsip_permanen.php' ? 'active' : '' ?>">
+            <a href="<?= $base_url ?>/arsip/arsip-permanen/arsip-permanen.php" class="menu-item <?= strpos($current_file, 'arsip-permanen') !== false ? 'active' : '' ?>">
                 <i class="fas fa-file-alt"></i>
                 <span>Arsip Permanen</span>
             </a>
