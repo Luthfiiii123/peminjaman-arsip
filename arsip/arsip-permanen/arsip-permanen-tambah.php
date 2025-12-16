@@ -4,17 +4,21 @@ include '../../konektor.php';
 
 if (isset($_POST['simpan'])) {
     
-    // 1. TANGKAP DATA (Hanya yang ada di Input Form)
+    // 1. TANGKAP DATA
     $user_id   = $_SESSION['id_user'] ?? 1;
     
     $uraian    = mysqli_real_escape_string($db, $_POST['uraian_informasi']);
     $id_kode   = $_POST['id_kode'];
     $id_sub    = $_POST['id_sub'];
     
+    // --- [PERBAIKAN 1] TANGKAP ID JENIS ---
+    $id_jenis  = $_POST['id_jenis']; 
+    // --------------------------------------
+
     // Subsub (Boleh kosong/NULL)
     $id_subsub = !empty($_POST['id_subsub']) ? "'".$_POST['id_subsub']."'" : "NULL";
-    
-    // Data tambahan yang masih Anda pakai
+
+    // Data tambahan
     $id_tingkat = $_POST['id_tingkat'];
     $id_nasib   = $_POST['id_nasib'];
     $kurun      = $_POST['kurun_waktu'];
@@ -31,15 +35,14 @@ if (isset($_POST['simpan'])) {
     if (move_uploaded_file($file_tmp, $target_dir . $new_file_name)) {
         
         // 3. INSERT KE DATABASE
-        // Perhatikan: Kolom nomor_arsip, id_jenis, dll TIDAK KITA TULIS DISINI
-        // Database akan otomatis mengisinya dengan NULL
-        
+        // --- [PERBAIKAN 2] TAMBAHKAN id_jenis KE DALAM QUERY ---
         $query = "INSERT INTO arsip_permanen (
                     user_id, 
                     uraian_informasi, 
                     id_kode, 
                     id_sub, 
                     id_subsub, 
+                    id_jenis,    /* <--- TAMBAHAN DISINI */
                     id_tingkat, 
                     id_nasib, 
                     kurun_waktu, 
@@ -51,6 +54,7 @@ if (isset($_POST['simpan'])) {
                     '$id_kode', 
                     '$id_sub', 
                     $id_subsub, 
+                    '$id_jenis', /* <--- TAMBAHAN DISINI */
                     '$id_tingkat', 
                     '$id_nasib', 
                     '$kurun', 

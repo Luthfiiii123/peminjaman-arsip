@@ -41,11 +41,12 @@ $query_string = "
         sub_sub_klasifikasi.nama_subsub, 
         tingkat_perkembangan.nama_tingkat,
         nasib_akhir.nama_nasib,
-        jenis_arsip.nama_jenis  /* <--- KITA PANGGIL INI */
+        jenis_arsip.nama_jenis
     FROM arsip_permanen
     LEFT JOIN kode_klasifikasi ON arsip_permanen.id_kode = kode_klasifikasi.id_kode
     LEFT JOIN sub_klasifikasi ON arsip_permanen.id_sub = sub_klasifikasi.id_sub
     LEFT JOIN sub_sub_klasifikasi ON arsip_permanen.id_subsub = sub_sub_klasifikasi.id_subsub
+
     LEFT JOIN tingkat_perkembangan ON arsip_permanen.id_tingkat = tingkat_perkembangan.id_tingkat
     LEFT JOIN nasib_akhir ON arsip_permanen.id_nasib = nasib_akhir.id_nasib
     
@@ -120,13 +121,14 @@ include '../../layout/header.php';
                                 <tr>
                                     <th>No</th>
                                     <th style="min-width: 300px;">Uraian Informasi Arsip</th>
-                                    <th style="min-width: 250px;">Kode Klasifikasi</th>
+                                    <th style="min-width: 150px;">Kode Klasifikasi</th>
                                     <th style="min-width: 250px;">Jenis/Series Arsip</th>
                                     <th style="min-width: 150px;">Tingkat Perkembangan</th>
                                     <th style="min-width: 100px;">Kurun Waktu</th>
                                     <th style="min-width: 120px;">Jumlah</th>
                                     <th style="min-width: 150px;">Ket. Nasib Akhir / No Box</th>
                                     <!-- <th style="min-width: 100px;">No Box</th> -->
+                                    <th style="min-width: 130px;">File</th>
                                     <th style="min-width: 130px;">Aksi</th>
                                 </tr>
                             </thead>
@@ -141,18 +143,19 @@ include '../../layout/header.php';
                                     </td>
 
                                     <td>
-                                        <div class="fw-bold"><?= htmlspecialchars($data['kode_klasifikasi']) ?></div>
+                                        <div class="text-primary fw-bold "><?= htmlspecialchars($data['id_sub']) ?></div>
                                         <div class="small text-muted"><?= htmlspecialchars($data['nama_sub']) ?></div>
-                                        <?php if($data['nama_subsub']): ?>
-                                            <div class="small text-secondary ps-2">↳ <?= htmlspecialchars($data['nama_sub_sub']) ?></div>
-                                        <?php endif; ?>
+                                        <!-- <?php if($data['nama_subsub']): ?>
+                                            <div class="small text-secondary ps-2"><?= htmlspecialchars($data['nama_subsub']) ?></div>
+                                        <?php endif; ?> -->
                                     </td>
+
                                     <td>
                                         <?= htmlspecialchars($data['nama_jenis'] ?? '-') ?>
                                     </td>
 
                                     <td class="text-center">
-                                        <span class="badge bg-info text-dark"><?= htmlspecialchars($data['nama_tingkat']) ?></span>
+                                        <span class="badge bg-primary text-light"><?= htmlspecialchars($data['nama_tingkat']) ?></span>
                                     </td>
                                     
                                     <td class="text-center"><?= htmlspecialchars($data['kurun_waktu']) ?></td>
@@ -163,6 +166,16 @@ include '../../layout/header.php';
                                     </td>
                                     
                                     <!-- <td class="text-center fw-bold"><?= htmlspecialchars($data['no_box']) ?></td> -->
+
+                                    <td class="text-center">
+                                        <?php if (!empty($data['file_pdf'])): ?>
+                                            <a href="../../uploads/<?= $data['file_pdf'] ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Lihat PDF">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
 
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-1">
@@ -248,7 +261,7 @@ include '../../layout/header.php';
                             <select name="id_subsub" id="grandchild_kode" class="form-select" disabled>
                                 <option value="">-- Pilih Sub Dulu --</option>
                                 <?php mysqli_data_seek($q_subsub, 0); while($ss = mysqli_fetch_assoc($q_subsub)): ?>
-                                    <option value="<?= $ss['id_subsub'] ?>" data-parent="<?= $ss['id_sub'] ?>"><?= $ss['nama_sub_sub'] ?></option>
+                                    <option value="<?= $ss['id_subsub'] ?>" data-parent="<?= $ss['id_sub'] ?>"><?= $ss['nama_subsub'] ?></option>
                                 <?php endwhile; ?>
                             </select>
                         </div>

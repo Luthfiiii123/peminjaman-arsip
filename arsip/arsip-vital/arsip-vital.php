@@ -95,7 +95,7 @@ include '../../layout/header.php';
                                     <th>No</th>                                  
                                     <th style="min-width: 150px;">Uraian Informasi</th>
                                     <th style="min-width: 100px;">Asal</th>
-                                    <th style="min-width: 150px;">Klasifikasi</th>
+                                    <th style="min-width: 150px;">Kode Klasifikasi</th>
                                     <th style="min-width: 150px;">Jenis</th>
                                     <th style="min-width: 130px;">Nomor Arsip</th>
                                     <th style="min-width: 100px;">Retensi</th>
