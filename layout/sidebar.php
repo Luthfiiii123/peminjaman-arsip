@@ -15,8 +15,8 @@ $current_file = basename($_SERVER['PHP_SELF']);
 $arsip_active = (
     strpos($current_file, 'arsip-vital') !== false || 
     strpos($current_file, 'arsip-permanen') !== false || 
-    strpos($current_file, 'arsip_aktif') !== false || 
-    strpos($current_file, 'arsip_inaktif') !== false
+    strpos($current_file, 'arsip-aktif') !== false || 
+    strpos($current_file, 'arsip-inaktif') !== false
 );
 
 // 2. Menu Pengawasan
@@ -175,12 +175,12 @@ $active = function($keyword) use ($current_file) {
                 <span>Arsip Permanen</span>
             </a>
 
-            <a href="<?= $base_url ?>/arsip_aktif.php" class="menu-item <?= $current_file == 'arsip_aktif.php' ? 'active' : '' ?>">
+            <a href="<?= $base_url ?>/arsip/arsip-aktif/arsip-aktif.php" class="menu-item <?= strpos($current_file, 'arsip-aktif') !== false ? 'active' : '' ?>">
                 <i class="fas fa-file-alt"></i>
                 <span>Arsip Aktif</span>
             </a>
 
-            <a href="<?= $base_url ?>/arsip_inaktif.php" class="menu-item <?= $current_file == 'arsip_inaktif.php' ? 'active' : '' ?>">
+            <a href="<?= $base_url ?>/arsip/arsip-inaktif/arsip-inaktif.php" class="menu-item <?= strpos($current_file, 'arsip-inaktif') !== false ? 'active' : '' ?>">
                 <i class="fas fa-file-alt"></i>
                 <span>Arsip Inaktif</span>
             </a>

@@ -92,6 +92,27 @@ $jml_user     = hitungData($db, 'user');
                 </div>
 
                 <div class="col-md-6 col-xl-3">
+                    <div class="card shadow-sm border-0 border-start border-4 border-danger h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-uppercase small fw-bold text-muted mb-1">Arsip Permanen</div>
+                                    <div class="h3 fw-bold mb-0 text-dark"><?= $jml_permanen ?></div>
+                                </div>
+                                <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-university fa-2x text-danger"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <a href="arsip/arsip-permanen/arsip-permanen.php" class="text-decoration-none small text-danger fw-semibold">
+                                    Lihat Detail <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-3">
                     <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
@@ -104,7 +125,7 @@ $jml_user     = hitungData($db, 'user');
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <a href="arsip_aktif.php" class="text-decoration-none small text-success fw-semibold">
+                                <a href="arsip/arsip-aktif/arsip-aktif.php" class="text-decoration-none small text-success fw-semibold">
                                     Lihat Detail <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
@@ -126,27 +147,6 @@ $jml_user     = hitungData($db, 'user');
                             </div>
                             <div class="mt-3">
                                 <a href="arsip_inaktif.php" class="text-decoration-none small text-secondary fw-semibold">
-                                    Lihat Detail <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-xl-3">
-                    <div class="card shadow-sm border-0 border-start border-4 border-danger h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <div class="text-uppercase small fw-bold text-muted mb-1">Arsip Permanen</div>
-                                    <div class="h3 fw-bold mb-0 text-dark"><?= $jml_permanen ?></div>
-                                </div>
-                                <div class="bg-danger bg-opacity-10 p-3 rounded">
-                                    <i class="fas fa-university fa-2x text-danger"></i>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <a href="arsip_permanen.php" class="text-decoration-none small text-danger fw-semibold">
                                     Lihat Detail <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>

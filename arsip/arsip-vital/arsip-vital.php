@@ -64,7 +64,7 @@ include '../../layout/header.php';
                         <i class="fas fa-archive me-2"></i> Data Arsip Vital
                     </h5>
                     <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalTambah">
-                        <i class="fas fa-plus"></i> Tambah Arsip
+                        <i class="fas fa-plus"></i> Tambah Data
                     </button>
                 </div>
 
@@ -119,8 +119,39 @@ include '../../layout/header.php';
                                     </td>
 
                                     <td>
-                                        <div class="text-primary fw-bold"><?= htmlspecialchars($data['id_sub']) ?></div>
-                                        <div class="small text-muted"><?= htmlspecialchars($data['nama_sub']) ?></div>
+                                        <?php 
+                                        // PRIORITAS 1: Cek Sub-Sub
+                                        if (!empty($data['nama_subsub'])) { 
+                                        ?>
+                                            <div class="fw-bold text-success">
+                                                <?= htmlspecialchars($data['id_subsub']) ?>
+                                            </div>
+                                            <div class="small text-muted">
+                                                <?= htmlspecialchars($data['nama_subsub']) ?>
+                                            </div>
+
+                                        <?php 
+                                        // PRIORITAS 2: Cek Sub (Jika Sub-Sub kosong)
+                                        } elseif (!empty($data['nama_sub'])) { 
+                                        ?>
+                                            <div class="fw-bold text-primary">
+                                                <?= htmlspecialchars($data['id_sub']) ?>
+                                            </div>
+                                            <div class="small text-muted">
+                                                <?= htmlspecialchars($data['nama_sub']) ?>
+                                            </div>
+
+                                        <?php 
+                                        // PRIORITAS 3: Induk (Jika keduanya kosong)
+                                        } else { 
+                                        ?>
+                                            <div class="fw-bold text-success">
+                                                <?= htmlspecialchars($data['kode_klasifikasi']) ?>
+                                            </div>
+                                            <div class="small text-muted">
+                                                <?= htmlspecialchars($data['deskripsi']) ?>
+                                            </div>
+                                        <?php } ?>
                                     </td>
                                     <td><?= htmlspecialchars($data['nama_jenis']) ?></td>
                                     <td><?= htmlspecialchars($data['nomor_arsip']) ?></td>

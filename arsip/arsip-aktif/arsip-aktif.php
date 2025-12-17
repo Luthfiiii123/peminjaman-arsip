@@ -2,6 +2,12 @@
 session_start();
 include '../../konektor.php';
 
+// Cek Login
+// if (!isset($_SESSION['user_id'])) {
+//     header("Location: ../../index.php");
+//     exit;
+// }
+
 // Default User ID
 $user_id = $_SESSION['user_id'] ?? 1;
 
@@ -11,65 +17,59 @@ $user_id = $_SESSION['user_id'] ?? 1;
 $kata_kunci  = mysqli_real_escape_string($db, $_GET['search'] ?? '');
 $klasifikasi = $_GET['klasifikasi'] ?? '';
 
-$kondisi = [];
+$kondisi = []; // Array penampung filter
+$where = "";   // Default variabel where kosong agar tidak error
 
 // A. Filter Kata Kunci
 if ($kata_kunci !== '') {
-    $kondisi[] = "(arsip_permanen.uraian_informasi LIKE '%$kata_kunci%' 
-                   OR arsip_permanen.nomor_arsip LIKE '%$kata_kunci%' 
-                   OR arsip_permanen.no_box LIKE '%$kata_kunci%')";
+    // Gunakan [] agar masuk ke array, dan HAPUS kata 'WHERE'
+    $kondisi[] = "(arsip_aktif.uraian_arsip LIKE '%$kata_kunci%' 
+                   OR arsip_aktif.uraian_berkas LIKE '%$kata_kunci%' 
+                   OR arsip_aktif.no_berkas LIKE '%$kata_kunci%')";
 }
 
 // B. Filter Klasifikasi
 if ($klasifikasi !== '' && $klasifikasi !== 'semua') {
-    $kondisi[] = "jenis_arsip.nama_jenis = '$klasifikasi'";
+    $kondisi[] = "arsip_aktif.id_kode = '$klasifikasi'";
 }
 
-$where = '';
+// C. PENYUSUNAN VARIABEL WHERE (INI YANG HILANG DI KODE ANDA)
 if (!empty($kondisi)) {
+    // Gabungkan semua kondisi dengan 'AND' dan tambahkan kata 'WHERE' di depan
     $where = "WHERE " . implode(" AND ", $kondisi);
 }
 
 /* ==============================================
-   2. QUERY DATA UTAMA
+   2. QUERY DATA UTAMA (ARSIP AKTIF)
 ============================================== */
 $nomor_urut = 1;
-$query_string = "
-    SELECT arsip_permanen.*, 
-        kode_klasifikasi.kode_klasifikasi,
-        sub_klasifikasi.nama_sub,
-        sub_sub_klasifikasi.nama_subsub, 
-        tingkat_perkembangan.nama_tingkat,
-        nasib_akhir.nama_nasib,
-        jenis_arsip.nama_jenis
-    FROM arsip_permanen
-    LEFT JOIN kode_klasifikasi ON arsip_permanen.id_kode = kode_klasifikasi.id_kode
-    LEFT JOIN sub_klasifikasi ON arsip_permanen.id_sub = sub_klasifikasi.id_sub
-    LEFT JOIN sub_sub_klasifikasi ON arsip_permanen.id_subsub = sub_sub_klasifikasi.id_subsub
 
-    LEFT JOIN tingkat_perkembangan ON arsip_permanen.id_tingkat = tingkat_perkembangan.id_tingkat
-    LEFT JOIN nasib_akhir ON arsip_permanen.id_nasib = nasib_akhir.id_nasib
-    
-    /* JOIN INI SEKARANG AKAN BERHASIL KARENA KOLOMNYA SUDAH ADA */
-    LEFT JOIN jenis_arsip ON arsip_permanen.id_jenis = jenis_arsip.id_jenis
-    
+$query_string = "
+    SELECT arsip_aktif.*, 
+        kode_klasifikasi.kode_klasifikasi,
+        kode_klasifikasi.deskripsi,
+        sub_klasifikasi.nama_sub,
+        sub_klasifikasi.id_sub,
+        sub_sub_klasifikasi.nama_subsub,
+        klasifikasi_keamanan.nama_keamanan
+    FROM arsip_aktif
+    LEFT JOIN kode_klasifikasi ON arsip_aktif.id_kode = kode_klasifikasi.id_kode
+    LEFT JOIN sub_klasifikasi ON arsip_aktif.id_sub = sub_klasifikasi.id_sub
+    LEFT JOIN sub_sub_klasifikasi ON arsip_aktif.id_subsub = sub_sub_klasifikasi.id_subsub
+    LEFT JOIN klasifikasi_keamanan ON arsip_aktif.id_keamanan = klasifikasi_keamanan.id_keamanan
     $where
-    ORDER BY arsip_permanen.id_arsip_permanen DESC
+    ORDER BY arsip_aktif.id_arsip_aktif DESC
 ";
+
 $query_arsip = mysqli_query($db, $query_string);
 
 /* ==============================================
-   3. QUERY OPSI MODAL
+   3. QUERY UNTUK DROPDOWN (MODAL)
 ============================================== */
 $q_kode     = mysqli_query($db, "SELECT * FROM kode_klasifikasi ORDER BY id_kode ASC");
 $q_sub      = mysqli_query($db, "SELECT * FROM sub_klasifikasi ORDER BY id_sub ASC");
 $q_subsub   = mysqli_query($db, "SELECT * FROM sub_sub_klasifikasi ORDER BY id_subsub ASC");
-// Query KHUSUS Permanen
-$q_jenis = mysqli_query($db, "SELECT * FROM jenis_arsip WHERE kategori='Permanen' ORDER BY nama_jenis ASC");
-// $q_metode   = mysqli_query($db, "SELECT * FROM metode_perlindungan ORDER BY nama_metode ASC");
-$q_tingkat  = mysqli_query($db, "SELECT * FROM tingkat_perkembangan ORDER BY id_tingkat ASC");
-$q_nasib    = mysqli_query($db, "SELECT * FROM nasib_akhir ORDER BY id_nasib ASC");
-// $q_keamanan = mysqli_query($db, "SELECT * FROM klasifikasi_keamanan ORDER BY id_keamanan ASC");
+$q_keamanan = mysqli_query($db, "SELECT * FROM klasifikasi_keamanan ORDER BY id_keamanan ASC");
 
 include '../../layout/header.php';
 ?>
@@ -82,17 +82,15 @@ include '../../layout/header.php';
             <div class="card shadow-lg rounded-3 overflow-hidden">
                 
                 <div class="card-header text-white d-flex justify-content-between align-items-center"
-                     style="background: linear-gradient(90deg, #4f46e5, #4338ca);">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-save me-2"></i> Data Arsip Permanen
+                     style="background: linear-gradient(90deg, #10b981, #059669);"> <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-file-invoice me-2"></i> Data Arsip Aktif
                     </h5>
                     <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalTambah">
                         <i class="fas fa-plus"></i> Tambah Data
                     </button>
                 </div>
 
-                <div class="card-body">
-                    
+                <div class="card-body">                  
                     <form method="GET" class="row g-2 mb-4 align-items-center">
                         <div class="col-md-7">
                             <input type="text" name="search" class="form-control" placeholder="Cari uraian, nomor arsip, atau no box..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
@@ -109,7 +107,7 @@ include '../../layout/header.php';
                         </div>
 
                         <div class="col-md-2 d-grid">
-                            <button type="submit" class="btn btn-primary" style="background-color: #c026d3; border-color: #c026d3;">
+                            <button type="submit" class="btn btn-success">
                                 <i class="fas fa-search me-1"></i> Cari
                             </button>
                         </div>
@@ -121,13 +119,12 @@ include '../../layout/header.php';
                                 <tr>
                                     <th>No</th>
                                     <th style="min-width: 300px;">Uraian Informasi Arsip</th>
-                                    <th style="min-width: 150px;">Kode Klasifikasi</th>
-                                    <th style="min-width: 250px;">Jenis/Series Arsip</th>
-                                    <th style="min-width: 150px;">Tingkat Perkembangan</th>
-                                    <th style="min-width: 100px;">Kurun Waktu</th>
+                                    <th style="min-width: 130px;">Kode Klasifikasi</th>
+                                    <th style="min-width: 300px;">Uraian Informasi Berkas</th>
+                                    <th style="min-width: 130px;">No Berkas</th>
                                     <th style="min-width: 120px;">Jumlah</th>
-                                    <th style="min-width: 150px;">Ket. Nasib Akhir / No Box</th>
-                                    <!-- <th style="min-width: 100px;">No Box</th> -->
+                                    <th style="min-width: 100px;">Tahun</th>
+                                    <th style="min-width: 130px;">Keamanan & Akses</th>
                                     <th style="min-width: 130px;">File</th>
                                     <th style="min-width: 130px;">Aksi</th>
                                 </tr>
@@ -138,16 +135,15 @@ include '../../layout/header.php';
                                 <tr>
                                     <td class="text-center"><?= $nomor_urut++ ?></td>
                                     
-                                    <td style="white-space: normal; min-width: 300px;">
-                                        <?= htmlspecialchars($data['uraian_informasi']) ?>
-                                    </td>
+                                    <td><?= htmlspecialchars($data['uraian_arsip']) ?></td>
 
                                     <td>
                                         <?php 
-                                        // PRIORITAS 1: Cek Sub-Sub
+                                        // PRIORITAS 1: Cek apakah Sub-Sub ada isinya?
+                                        // Jika user memilih sampai Sub-Sub, maka bagian ini yang akan TAMPIL.
                                         if (!empty($data['nama_subsub'])) { 
                                         ?>
-                                            <div class="fw-bold text-primary">
+                                            <div class="fw-bold text-success">
                                                 <?= htmlspecialchars($data['id_subsub']) ?>
                                             </div>
                                             <div class="small text-muted">
@@ -155,7 +151,8 @@ include '../../layout/header.php';
                                             </div>
 
                                         <?php 
-                                        // PRIORITAS 2: Cek Sub (Jika Sub-Sub kosong)
+                                        // PRIORITAS 2: Jika Sub-Sub kosong (NULL), tapi Sub ada isinya?
+                                        // Maka bagian ini yang tampil.
                                         } elseif (!empty($data['nama_sub'])) { 
                                         ?>
                                             <div class="fw-bold text-success">
@@ -166,7 +163,8 @@ include '../../layout/header.php';
                                             </div>
 
                                         <?php 
-                                        // PRIORITAS 3: Induk (Jika keduanya kosong)
+                                        // PRIORITAS 3: Jika Sub juga kosong?
+                                        // Tampilkan Induk.
                                         } else { 
                                         ?>
                                             <div class="fw-bold text-success">
@@ -178,22 +176,19 @@ include '../../layout/header.php';
                                         <?php } ?>
                                     </td>
 
-                                    <td>
-                                        <?= htmlspecialchars($data['nama_jenis'] ?? '-') ?>
-                                    </td>
+                                    <td><?= htmlspecialchars($data['uraian_berkas']) ?></td>
+                                    
+                                    <td class="text-center fw-bold"><?= htmlspecialchars($data['no_berkas']) ?></td>
+
+                                    <td class="text-center"><?= htmlspecialchars($data['jumlah']) ?></td>
+
+                                    <td class="text-center"><?= htmlspecialchars($data['kurun_waktu']) ?></td>
 
                                     <td class="text-center">
-                                        <span class="badge bg-primary text-light"><?= htmlspecialchars($data['nama_tingkat']) ?></span>
+                                    <span class="badge bg-secondary mb-1">
+                                        <?= htmlspecialchars($data['nama_keamanan'] ?? '-') ?>
+                                    </span>
                                     </td>
-                                    
-                                    <td class="text-center"><?= htmlspecialchars($data['kurun_waktu']) ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($data['jumlah']) ?></td>
-                                    
-                                    <td class="text-center">
-                                        <span class="badge bg-warning text-dark mb-1"><?= htmlspecialchars($data['nama_nasib']) ?></span><br>
-                                    </td>
-                                    
-                                    <!-- <td class="text-center fw-bold"><?= htmlspecialchars($data['no_box']) ?></td> -->
 
                                     <td class="text-center">
                                         <?php if (!empty($data['file_pdf'])): ?>
@@ -203,18 +198,20 @@ include '../../layout/header.php';
                                         <?php else: ?>
                                             <span class="text-muted small">-</span>
                                         <?php endif; ?>
-                                    </td> 
+                                    </td>
 
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-1">
                                             <a href="#" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
-                                            <a href="arsip-permanen-hapus.php?id=<?= $data['id_arsip_permanen'] ?>" onclick="return confirm('Anda Yakin Ingin Menghapus File ini?')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></a>
+                                            <a href="arsip-aktif-hapus.php?id=<?= $data['id_arsip_aktif'] ?>" 
+                                               onclick="return confirm('Hapus data arsip aktif ini?')" 
+                                               class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>
                                 </tr>
                                 <?php } ?>
                             <?php } else { ?>
-                                <tr><td colspan="10" class="text-center py-5 text-muted">Data Kosong</td></tr>
+                                <tr><td colspan="10" class="text-center py-4 text-muted">Data Arsip Aktif Kosong</td></tr>
                             <?php } ?>
                             </tbody>
                         </table>
@@ -229,123 +226,86 @@ include '../../layout/header.php';
     <div class="modal-dialog modal-lg modal-dialog-scrollable"> 
         <div class="modal-content">
             
-            <div class="modal-header text-white" style="background: linear-gradient(90deg, #d946ef, #c026d3);">
-                <h5 class="modal-title fw-bold"><i class="fas fa-folder-plus me-2"></i>Tambah Arsip Permanen</h5>
+            <div class="modal-header text-white" style="background: linear-gradient(90deg, #10b981, #059669);">
+                <h5 class="modal-title fw-bold"><i class="fas fa-folder-plus me-2"></i>Tambah Arsip Aktif</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             
             <div class="modal-body">
-                <form action="arsip-permanen-tambah.php" method="POST" enctype="multipart/form-data" id="formTambah">
+                <form action="arsip-aktif-tambah.php" method="POST" enctype="multipart/form-data" id="formTambah">
                     <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
                     <div class="row g-3">
                         
                         <div class="col-12">
                             <label class="form-label fw-semibold">Uraian Informasi Arsip</label>
-                            <textarea name="uraian_informasi" class="form-control" rows="3" placeholder="Jelaskan isi arsip..." required></textarea>
-                        </div>
-                        
-                        <!-- <div class="col-12">
-                            <label class="form-label fw-semibold">Asal Arsip</label>
-                            <select name="asal_arsip" class="form-select" required>
-                                <option value="internal">Internal</option>
-                                <option value="eksternal">Eksternal</option>
-                            </select>
-                        </div> -->
-
-                        <div class="col-12">
-                            <hr class="my-1">
-                            <small class="text-primary fw-bold">KLASIFIKASI</small>
+                            <textarea name="uraian_arsip" class="form-control" rows="2" placeholder="Contoh: Laporan Kegiatan Tahunan..." required></textarea>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Kode Klasifikasi</label>
+                            <label class="form-label fw-semibold">1. Kode Klasifikasi Induk</label>
                             <select name="id_kode" id="parent_kode" class="form-select" required>
-                                <option value="">-- Pilih Kode Klasifikasi --</option>
-                                <?php 
-                                // Reset pointer data ke awal (biar bisa di-loop ulang jika perlu)
-                                mysqli_data_seek($q_kode, 0); 
-                                
-                                while($induk = mysqli_fetch_assoc($q_kode)): 
-                                ?>
-                                    <option value="<?= $induk['id_kode'] ?>">
-                                        <?= $induk['kode_klasifikasi'] ?> - <?= $induk['deskripsi'] ?>
-                                    </option>
-                                    
+                                <option value="">-- Pilih Kode --</option>
+                                <?php mysqli_data_seek($q_kode, 0); while($k = mysqli_fetch_assoc($q_kode)): ?>
+                                    <option value="<?= $k['id_kode'] ?>"><?= $k['kode_klasifikasi'] ?> - <?= $k['deskripsi'] ?></option>
                                 <?php endwhile; ?>
                             </select>
                         </div>
+
                         <div class="col-12">
                             <label class="form-label fw-semibold">2. Sub Klasifikasi</label>
                             <select name="id_sub" id="child_kode" class="form-select" required disabled>
                                 <option value="">-- Pilih Induk Dulu --</option>
                                 <?php mysqli_data_seek($q_sub, 0); while($s = mysqli_fetch_assoc($q_sub)): ?>
-                                    <option value="<?= $s['id_sub'] ?>" data-parent="<?= $s['id_kode'] ?>"><?= $s['id_sub'] ?> - <?= $s['nama_sub'] ?></option>
+                                    <option value="<?= $s['id_sub'] ?>" data-parent="<?= $s['id_kode'] ?>">
+                                        <?= $s['id_sub'] ?> - <?= $s['nama_sub'] ?>
+                                    </option>
                                 <?php endwhile; ?>
                             </select>
                         </div>
+
                         <div class="col-12">
                             <label class="form-label fw-semibold">3. Sub-Sub (Opsional)</label>
                             <select name="id_subsub" id="grandchild_kode" class="form-select" disabled>
                                 <option value="">-- Pilih Sub Dulu --</option>
                                 <?php mysqli_data_seek($q_subsub, 0); while($ss = mysqli_fetch_assoc($q_subsub)): ?>
-                                    <option value="<?= $ss['id_subsub'] ?>" data-parent="<?= $ss['id_sub'] ?>"><?= $ss['nama_subsub'] ?></option>
+                                    <option value="<?= $ss['id_subsub'] ?>" data-parent="<?= $ss['id_sub'] ?>">
+                                        <?= $ss['nama_subsub'] ?>
+                                    </option>
                                 <?php endwhile; ?>
                             </select>
                         </div>
 
                         <div class="col-12">
-                            <hr class="my-1">
-                            <small class="text-primary fw-bold">DETAIL ARSIP</small>
+                            <label class="form-label fw-semibold">Uraian Informasi Berkas</label>
+                            <input type="text" name="uraian_berkas" id="input_uraian_berkas" class="form-control" placeholder="Terisi otomatis sesuai klasifikasi..." required>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Jenis Arsip</label>
-                            <select name="id_jenis" class="form-select" required>
-                                <option value="">-- Pilih Jenis --</option>
-                                <?php mysqli_data_seek($q_jenis, 0); while($j = mysqli_fetch_assoc($q_jenis)): ?>
-                                    <option value="<?= $j['id_jenis'] ?>"><?= $j['nama_jenis'] ?></option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Tingkat Perkembangan</label>
-                            <select name="id_tingkat" class="form-select" required>
-                                <option value="">-- Pilih --</option>
-                                <?php mysqli_data_seek($q_tingkat, 0); while($tp = mysqli_fetch_assoc($q_tingkat)): ?>
-                                    <option value="<?= $tp['id_tingkat'] ?>"><?= $tp['nama_tingkat'] ?></option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
+                            <label class="form-label fw-semibold">No. Berkas</label>
+                            <input type="text" name="no_berkas" class="form-control" placeholder="Contoh: 001/B/2024" required>
+                        </div> 
 
                         <div class="col-12">
                             <label class="form-label fw-semibold">Kurun Waktu (Tahun)</label>
-                            <input type="number" name="kurun_waktu" class="form-control" placeholder="2022" required>
+                            <input type="number" name="kurun_waktu" class="form-control" placeholder="2024" required>
                         </div>
+
                         <div class="col-12">
                             <label class="form-label fw-semibold">Jumlah</label>
-                            <input type="text" name="jumlah" class="form-control" placeholder="1 Bundel" required>
+                            <input type="text" name="jumlah" class="form-control" placeholder="1 Berkas" required>
                         </div>
 
                         <div class="col-12">
-                            <hr class="my-1">
-                            <small class="text-primary fw-bold">KEAMANAN & LOKASI</small>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Nasib Akhir</label>
-                            <select name="id_nasib" class="form-select" required>
-                                <option value="">-- Pilih Nasib --</option>
-                                <?php mysqli_data_seek($q_nasib, 0); while($na = mysqli_fetch_assoc($q_nasib)): ?>
-                                    <option value="<?= $na['id_nasib'] ?>"><?= $na['nama_nasib'] ?></option>
+                            <label class="form-label fw-semibold">Keterangan Klasifikasi Keamanan</label>
+                            <select name="id_keamanan" class="form-select" required>
+                                <option value="">-- Pilih Tingkat Keamanan --</option>
+                                <?php mysqli_data_seek($q_keamanan, 0); while($km = mysqli_fetch_assoc($q_keamanan)): ?>
+                                    <option value="<?= $km['id_keamanan'] ?>">
+                                        <?= $km['nama_keamanan'] ?>
+                                    </option>
                                 <?php endwhile; ?>
                             </select>
-                        </div>
-
-                        <div class="col-12">
-                            <hr class="my-1">
-                            <small class="text-primary fw-bold">FILE DIGITAL</small>
                         </div>
 
                         <div class="col-12">
@@ -355,12 +315,14 @@ include '../../layout/header.php';
                         </div>
 
                     </div>
-                </form> </div>
+                </form>
+            </div>
             
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" form="formTambah" name="simpan" class="btn btn-primary" style="background-color: #c026d3; border-color: #c026d3;">Simpan Data</button>
+                <button type="submit" form="formTambah" name="simpan" class="btn btn-success">Simpan Data</button>
             </div>
+
         </div>
     </div>
 </div>
@@ -372,25 +334,43 @@ document.addEventListener("DOMContentLoaded", function() {
     const parentSelect = document.getElementById("parent_kode");
     const childSelect = document.getElementById("child_kode");
     const grandChildSelect = document.getElementById("grandchild_kode");
+    const uraianInput = document.getElementById("input_uraian_berkas");
+    const formTambah = document.getElementById("formTambah");
+
+    // Fungsi Autofill Uraian
+    function autoFillUraian(selectElement) {
+        if (selectElement.value === "") return;
+        const selectedText = selectElement.options[selectElement.selectedIndex].text;
+        const parts = selectedText.split(' - ');
+        if (parts.length > 1) {
+            uraianInput.value = parts.slice(1).join(' - ');
+        } else {
+            uraianInput.value = selectedText;
+        }
+    }
 
     if (parentSelect && childSelect && grandChildSelect) {
         
         const childOptions = Array.from(childSelect.options);
         const grandChildOptions = Array.from(grandChildSelect.options);
 
-        // INDUK -> SUB
+        // --- 1. INDUK BERUBAH ---
         parentSelect.addEventListener("change", function() {
             const selectedParentID = this.value; 
-            
+            autoFillUraian(this);
+
+            // Reset dan Kunci Kembali Anak-anaknya
             childSelect.innerHTML = '<option value="">-- Pilih Sub Klasifikasi --</option>';
-            childSelect.disabled = true;
-            grandChildSelect.innerHTML = '<option value="">-- Pilih Sub Terlebih Dahulu --</option>';
-            grandChildSelect.disabled = true;
+            childSelect.disabled = true; // Kunci dulu
+            
+            grandChildSelect.innerHTML = '<option value="">-- Pilih Sub Dulu --</option>';
+            grandChildSelect.disabled = true; // Kunci dulu
 
             if (selectedParentID) {
                 const filtered = childOptions.filter(opt => opt.getAttribute("data-parent") === selectedParentID);
                 if (filtered.length > 0) {
-                    childSelect.disabled = false;
+                    // JIKA ADA DATA, BUKA GEMBOK
+                    childSelect.disabled = false; 
                     filtered.forEach(opt => childSelect.add(opt.cloneNode(true)));
                 } else {
                     childSelect.innerHTML = '<option value="">-- Tidak ada sub klasifikasi --</option>';
@@ -398,22 +378,39 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // SUB -> SUBSUB
+        // --- 2. SUB BERUBAH ---
         childSelect.addEventListener("change", function() {
             const selectedSubID = this.value;
+            autoFillUraian(this);
 
+            // Reset dan Kunci Cucu
             grandChildSelect.innerHTML = '<option value="">-- Pilih Sub-Sub Klasifikasi --</option>';
-            grandChildSelect.disabled = true;
+            grandChildSelect.disabled = true; // Kunci dulu
 
             if (selectedSubID) {
                 const filtered = grandChildOptions.filter(opt => opt.getAttribute("data-parent") === selectedSubID);
                 if (filtered.length > 0) {
+                    // JIKA ADA DATA, BUKA GEMBOK
                     grandChildSelect.disabled = false;
                     filtered.forEach(opt => grandChildSelect.add(opt.cloneNode(true)));
                 } else {
                     grandChildSelect.innerHTML = '<option value="">-- Tidak ada sub-sub klasifikasi --</option>';
                 }
             }
+        });
+
+        // --- 3. SUB-SUB BERUBAH ---
+        grandChildSelect.addEventListener("change", function() {
+            autoFillUraian(this);
+        });
+
+        // ============================================================
+        // SAFETY NET (PENTING AGAR TIDAK ERROR DATABASE)
+        // Saat tombol Simpan ditekan, paksa semua dropdown jadi AKTIF
+        // ============================================================
+        formTambah.addEventListener("submit", function() {
+            childSelect.disabled = false;
+            grandChildSelect.disabled = false;
         });
     }
 });
