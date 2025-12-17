@@ -41,7 +41,7 @@ $jml_user     = hitungData($db, 'user');
 
     <?php include __DIR__ . '/layout/sidebar.php'; ?>
 
-    <main class="flex-grow-1 p-4" style="background-color:#f3f4f6; min-height:100vh;">
+     <main class="flex-grow-1 p-4" style="background-color:#f3f4f6; min-height:100vh;">
         
         <div class="container-fluid">
 
@@ -146,7 +146,7 @@ $jml_user     = hitungData($db, 'user');
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <a href="arsip_inaktif.php" class="text-decoration-none small text-secondary fw-semibold">
+                                <a href="arsip/arsip-inaktif/arsip-inaktif.php" class="text-decoration-none small text-secondary fw-semibold">
                                     Lihat Detail <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>

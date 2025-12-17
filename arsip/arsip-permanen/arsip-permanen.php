@@ -169,7 +169,7 @@ include '../../layout/header.php';
                                         // PRIORITAS 3: Induk (Jika keduanya kosong)
                                         } else { 
                                         ?>
-                                            <div class="fw-bold text-success">
+                                            <div class="fw-bold text-primary">
                                                 <?= htmlspecialchars($data['kode_klasifikasi']) ?>
                                             </div>
                                             <div class="small text-muted">
