@@ -2,36 +2,54 @@
 session_start();
 include '../../konektor.php';
 
+// Default User ID
+$user_id = $_SESSION['user_id'] ?? 1;
+
 /* ==============================================
-   1. LOGIKA PENCARIAN & FILTER
+   1. LOGIKA PENCARIAN & FILTER (DARI HEADER)
 ============================================== */
 $kata_kunci  = mysqli_real_escape_string($db, $_GET['search'] ?? '');
 $klasifikasi = $_GET['klasifikasi'] ?? '';
 $kondisi = [];
 
+// A. Filter Pencarian
 if ($kata_kunci !== '') {
     $kondisi[] = "(arsip_vital.uraian_informasi LIKE '%$kata_kunci%' 
                    OR arsip_vital.nomor_arsip LIKE '%$kata_kunci%' 
                    OR arsip_vital.lokasi_simpan LIKE '%$kata_kunci%')";
 }
-if ($klasifikasi !== '' && $klasifikasi !== 'semua') {
+
+// B. Filter Kategori (Jika dari header dipilih filter selain 'semua' dan 'vital')
+// Catatan: Jika header mengirim 'vital', kita tidak perlu filter karena ini memang halaman vital.
+// Tapi jika header mengirim 'KU.01', maka kita filter.
+if ($klasifikasi !== '' && $klasifikasi !== 'semua' && $klasifikasi !== 'vital') {
+    // Asumsi: Header mengirim ID KODE atau NAMA JENIS. Sesuaikan dengan kebutuhan.
+    // Jika dropdown header isinya ID KODE:
+    // $kondisi[] = "arsip_vital.id_kode = '$klasifikasi'";
+    
+    // Jika dropdown header isinya NAMA JENIS:
     $kondisi[] = "jenis_arsip.nama_jenis = '$klasifikasi'";
 }
+
 $where = '';
 if (!empty($kondisi)) {
     $where = "WHERE " . implode(" AND ", $kondisi);
 }
 
 /* ==============================================
-   2. QUERY DATA
+   2. QUERY DATA UTAMA
 ============================================== */
 $nomor_urut = 1;
 $query_string = "
     SELECT arsip_vital.*, 
         sub_klasifikasi.nama_sub, 
+        sub_klasifikasi.id_sub,
+        kode_klasifikasi.kode_klasifikasi,
+        kode_klasifikasi.deskripsi,
         jenis_arsip.nama_jenis, 
         metode_perlindungan.nama_metode
     FROM arsip_vital
+    LEFT JOIN kode_klasifikasi ON arsip_vital.id_kode = kode_klasifikasi.id_kode
     LEFT JOIN sub_klasifikasi ON arsip_vital.id_sub = sub_klasifikasi.id_sub
     LEFT JOIN jenis_arsip ON arsip_vital.id_jenis = jenis_arsip.id_jenis
     LEFT JOIN metode_perlindungan ON arsip_vital.id_metode = metode_perlindungan.id_metode
@@ -43,9 +61,9 @@ $query_arsip = mysqli_query($db, $query_string);
 /* ==============================================
    3. QUERY OPSI MODAL
 ============================================== */
-$q_kode = mysqli_query($db, "SELECT * FROM kode_klasifikasi ORDER BY id_kode ASC");
-$q_sub  = mysqli_query($db, "SELECT * FROM sub_klasifikasi ORDER BY id_sub ASC");
-$q_jenis = mysqli_query($db, "SELECT * FROM jenis_arsip WHERE kategori='Vital' ORDER BY nama_jenis ASC");
+$q_kode   = mysqli_query($db, "SELECT * FROM kode_klasifikasi ORDER BY id_kode ASC");
+$q_sub    = mysqli_query($db, "SELECT * FROM sub_klasifikasi ORDER BY id_sub ASC");
+$q_jenis  = mysqli_query($db, "SELECT * FROM jenis_arsip WHERE kategori='Vital' ORDER BY nama_jenis ASC");
 $q_metode = mysqli_query($db, "SELECT * FROM metode_perlindungan ORDER BY nama_metode ASC");
 
 include '../../layout/header.php';
@@ -53,7 +71,7 @@ include '../../layout/header.php';
 
 <div class="d-flex">
     <?php include '../../layout/sidebar.php'; ?>
-
+    
     <main class="flex-grow-1 p-4" style="background-color: #f3f4f6; min-height:100vh; min-width: 0;">
         <div class="container-fluid">
             <div class="card shadow-lg rounded-3 overflow-hidden">
@@ -63,37 +81,20 @@ include '../../layout/header.php';
                     <h5 class="mb-0 fw-bold">
                         <i class="fas fa-archive me-2"></i> Data Arsip Vital
                     </h5>
-                    <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalTambah">
-                        <i class="fas fa-plus"></i> Tambah Data
+                    <button type="button" class="btn btn-light btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTambah">
+                        <i class="fas fa-plus me-1"></i> Tambah Data
                     </button>
                 </div>
 
                 <div class="card-body">
-                    <form method="GET" class="row g-2 mb-4 align-items-center">
-                        <div class="col-md-7">
-                            <input type="text" name="search" class="form-control" placeholder="Cari uraian, nomor, lokasi..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <select name="klasifikasi" class="form-select">
-                                <option value="semua" <?= ($klasifikasi == 'semua') ? 'selected' : '' ?>>Semua Arsip</option>
-                                <option value="Vital" <?= ($klasifikasi == 'Vital') ? 'selected' : '' ?>>Arsip Vital</option>
-                                <option value="Permanen" <?= ($klasifikasi == 'Permanen') ? 'selected' : '' ?>>Arsip Permanen</option>
-                                <option value="Aktif" <?= ($klasifikasi == 'Aktif') ? 'selected' : '' ?>>Arsip Aktif</option>
-                                <option value="Inaktif" <?= ($klasifikasi == 'Inaktif') ? 'selected' : '' ?>>Arsip Inaktif</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2 d-grid">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-search me-1"></i> Cari</button>
-                        </div>
-                    </form>
-
+                    
                     <div class="table-responsive">
                         
                         <table class="table table-bordered table-hover align-middle">
                             <thead class="table-light text-center align-middle">
                                 <tr>
                                     <th>No</th>                                  
-                                    <th style="min-width: 150px;">Uraian Informasi</th>
+                                    <th style="min-width: 250px;">Uraian Informasi</th>
                                     <th style="min-width: 100px;">Asal</th>
                                     <th style="min-width: 150px;">Kode Klasifikasi</th>
                                     <th style="min-width: 150px;">Jenis</th>
@@ -101,8 +102,8 @@ include '../../layout/header.php';
                                     <th style="min-width: 100px;">Retensi</th>
                                     <th style="min-width: 150px;">Lokasi</th>
                                     <th style="min-width: 130px;">Metode</th>
-                                    <th style="min-width: 130px;">File</th>
-                                    <th style="min-width: 130px;">Aksi</th>
+                                    <th style="min-width: 100px;">File</th>
+                                    <th style="min-width: 120px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -110,6 +111,7 @@ include '../../layout/header.php';
                                 <?php while ($data = mysqli_fetch_assoc($query_arsip)) { ?>
                                 <tr>
                                     <td class="text-center"><?= $nomor_urut++ ?></td>
+                                    
                                     <td><?= htmlspecialchars($data['uraian_informasi']) ?></td>
                                     
                                     <td class="text-center">
@@ -119,40 +121,15 @@ include '../../layout/header.php';
                                     </td>
 
                                     <td>
-                                        <?php 
-                                        // PRIORITAS 1: Cek Sub-Sub
-                                        if (!empty($data['nama_subsub'])) { 
-                                        ?>
-                                            <div class="fw-bold text-success">
-                                                <?= htmlspecialchars($data['id_subsub']) ?>
-                                            </div>
-                                            <div class="small text-muted">
-                                                <?= htmlspecialchars($data['nama_subsub']) ?>
-                                            </div>
-
-                                        <?php 
-                                        // PRIORITAS 2: Cek Sub (Jika Sub-Sub kosong)
-                                        } elseif (!empty($data['nama_sub'])) { 
-                                        ?>
-                                            <div class="fw-bold text-primary">
-                                                <?= htmlspecialchars($data['id_sub']) ?>
-                                            </div>
-                                            <div class="small text-muted">
-                                                <?= htmlspecialchars($data['nama_sub']) ?>
-                                            </div>
-
-                                        <?php 
-                                        // PRIORITAS 3: Induk (Jika keduanya kosong)
-                                        } else { 
-                                        ?>
-                                            <div class="fw-bold text-success">
-                                                <?= htmlspecialchars($data['kode_klasifikasi']) ?>
-                                            </div>
-                                            <div class="small text-muted">
-                                                <?= htmlspecialchars($data['deskripsi']) ?>
-                                            </div>
+                                        <?php if (!empty($data['nama_sub'])) { ?>
+                                            <div class="fw-bold text-primary"><?= $data['id_sub'] ?></div>
+                                            <div class="small text-muted"><?= $data['nama_sub'] ?></div>
+                                        <?php } else { ?>
+                                            <div class="fw-bold text-primary"><?= $data['kode_klasifikasi'] ?></div>
+                                            <div class="small text-muted"><?= $data['deskripsi'] ?></div>
                                         <?php } ?>
                                     </td>
+
                                     <td><?= htmlspecialchars($data['nama_jenis']) ?></td>
                                     <td><?= htmlspecialchars($data['nomor_arsip']) ?></td>
                                     <td class="text-center"><?= htmlspecialchars($data['retensi']) ?> Tahun</td>
@@ -243,7 +220,6 @@ include '../../layout/header.php';
                             <select name="id_jenis" class="form-select" required>
                                 <option value="">-- Pilih Jenis Arsip --</option>
                                 <?php 
-                                // Pastikan variabel $q_jenis sudah didefinisikan sesuai halaman (Vital/Permanen)
                                 if (isset($q_jenis)) {
                                     mysqli_data_seek($q_jenis, 0); 
                                     while($j = mysqli_fetch_assoc($q_jenis)): 
@@ -251,10 +227,7 @@ include '../../layout/header.php';
                                     <option value="<?= $j['id_jenis'] ?>">
                                         <?= $j['nama_jenis'] ?>
                                     </option>
-                                <?php 
-                                    endwhile; 
-                                }
-                                ?>
+                                <?php endwhile; } ?>
                             </select>
                         </div>
                         <div class="col-md-6">

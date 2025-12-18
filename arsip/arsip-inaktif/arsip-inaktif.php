@@ -86,29 +86,7 @@ include '../../layout/header.php';
                         <i class="fas fa-plus"></i> Tambah Data
                     </button>
                 </div>
-                    <div class="card-body">                  
-                    <form method="GET" class="row g-2 mb-4 align-items-center">
-                        <div class="col-md-7">
-                            <input type="text" name="search" class="form-control" placeholder="Cari uraian, nomor arsip, atau no box..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <select name="klasifikasi" class="form-select">
-                                <option value="semua" <?= ($klasifikasi == 'semua') ? 'selected' : '' ?>>Semua Arsip</option>
-                                <option value="Vital" <?= ($klasifikasi == 'Vital') ? 'selected' : '' ?>>Arsip Vital</option>
-                                <option value="Permanen" <?= ($klasifikasi == 'Permanen') ? 'selected' : '' ?>>Arsip Permanen</option>
-                                <option value="Aktif" <?= ($klasifikasi == 'Aktif') ? 'selected' : '' ?>>Arsip Aktif</option>
-                                <option value="Inaktif" <?= ($klasifikasi == 'Inaktif') ? 'selected' : '' ?>>Arsip Inaktif</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-2 d-grid">
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-search me-1"></i> Cari
-                            </button>
-                        </div>
-                    </form>
-
+                    <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle">
                             <thead class="table-light text-center align-middle">
