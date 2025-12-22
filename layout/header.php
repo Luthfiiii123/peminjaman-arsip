@@ -121,11 +121,27 @@ $current_search = htmlspecialchars($_GET['search'] ?? '');
                 <form id="globalSearchForm" method="GET" class="search-group">
                     
                     <select id="kategoriArsip" class="form-select search-select">
-                        <option value="semua" <?= $kategori_aktif == 'semua' ? 'selected' : '' ?>>Semua</option>
-                        <option value="aktif" <?= $kategori_aktif == 'aktif' ? 'selected' : '' ?>>Arsip Aktif</option>
-                        <option value="inaktif" <?= $kategori_aktif == 'inaktif' ? 'selected' : '' ?>>Arsip Inaktif</option>
-                        <option value="vital" <?= $kategori_aktif == 'vital' ? 'selected' : '' ?>>Arsip Vital</option>
-                        <option value="permanen" <?= $kategori_aktif == 'permanen' ? 'selected' : '' ?>>Arsip Permanen</option>
+                        <option value="" disabled selected hidden>Kategori</option>
+
+                        <?php if ($kategori_aktif !== 'semua'): ?>
+                            <option value="semua">Semua</option>
+                        <?php endif; ?>
+
+                        <?php if ($kategori_aktif !== 'aktif'): ?>
+                            <option value="aktif">Arsip Aktif</option>
+                        <?php endif; ?>
+
+                        <?php if ($kategori_aktif !== 'inaktif'): ?>
+                            <option value="inaktif">Arsip Inaktif</option>
+                        <?php endif; ?>
+
+                        <?php if ($kategori_aktif !== 'vital'): ?>
+                            <option value="vital">Arsip Vital</option>
+                        <?php endif; ?>
+
+                        <?php if ($kategori_aktif !== 'permanen'): ?>
+                            <option value="permanen">Arsip Permanen</option>
+                        <?php endif; ?>
                     </select>
 
                     <input type="text" name="search" class="form-control search-input" 
@@ -180,15 +196,32 @@ document.addEventListener("DOMContentLoaded", function() {
             e.preventDefault(); 
             const keyword = form.querySelector('input[name="search"]').value;
             const kategori = select.value;
+            
+            // Ambil URL halaman saat ini untuk default (jika user tidak memilih kategori)
+            let currentPath = window.location.pathname;
             let targetURL = "";
 
-            switch (kategori) {
-                case 'aktif': targetURL = baseURL + "/arsip-aktif/arsip-aktif.php"; break;
-                case 'inaktif': targetURL = baseURL + "/arsip-inaktif/arsip-inaktif.php"; break;
-                case 'vital': targetURL = baseURL + "/arsip-vital/arsip-vital.php"; break;
-                case 'permanen': targetURL = baseURL + "/arsip-permanen/arsip-permanen.php"; break;
-                default: targetURL = baseURL + "/arsip-aktif/arsip-aktif.php"; break;
+            if (kategori === "") {
+                // Jika user tidak memilih kategori (tetap di tulisan "Kategori")
+                // Maka cari di halaman ini saja
+                targetURL = currentPath;
+            } else {
+                // Jika user memilih kategori lain
+                switch (kategori) {
+                    case 'aktif': targetURL = baseURL + "/arsip-aktif/arsip-aktif.php"; break;
+                    case 'inaktif': targetURL = baseURL + "/arsip-inaktif/arsip-inaktif.php"; break;
+                    case 'vital': targetURL = baseURL + "/arsip-vital/arsip-vital.php"; break;
+                    case 'permanen': targetURL = baseURL + "/arsip-permanen/arsip-permanen.php"; break;
+                    case 'semua': 
+                        // Asumsi ada halaman dashboard atau pencarian global
+                        // Sesuaikan dengan halaman 'Semua' Anda
+                        targetURL = "/peminjaman-arsip/dashboard.php"; 
+                        break;
+                    default: targetURL = baseURL + "/arsip-aktif/arsip-aktif.php"; break;
+                }
             }
+
+            // Redirect
             window.location.href = targetURL + "?search=" + encodeURIComponent(keyword);
         });
     }

@@ -6,7 +6,7 @@ include '../../konektor.php';
 $user_id = $_SESSION['user_id'] ?? 1;
 
 /* ==============================================
-   1. LOGIKA PENCARIAN & FILTER (DARI HEADER)
+   1. LOGIKA PENCARIAN & FILTER
 ============================================== */
 $kata_kunci  = mysqli_real_escape_string($db, $_GET['search'] ?? '');
 $klasifikasi = $_GET['klasifikasi'] ?? '';
@@ -19,15 +19,8 @@ if ($kata_kunci !== '') {
                    OR arsip_vital.lokasi_simpan LIKE '%$kata_kunci%')";
 }
 
-// B. Filter Kategori (Jika dari header dipilih filter selain 'semua' dan 'vital')
-// Catatan: Jika header mengirim 'vital', kita tidak perlu filter karena ini memang halaman vital.
-// Tapi jika header mengirim 'KU.01', maka kita filter.
+// B. Filter Kategori
 if ($klasifikasi !== '' && $klasifikasi !== 'semua' && $klasifikasi !== 'vital') {
-    // Asumsi: Header mengirim ID KODE atau NAMA JENIS. Sesuaikan dengan kebutuhan.
-    // Jika dropdown header isinya ID KODE:
-    // $kondisi[] = "arsip_vital.id_kode = '$klasifikasi'";
-    
-    // Jika dropdown header isinya NAMA JENIS:
     $kondisi[] = "jenis_arsip.nama_jenis = '$klasifikasi'";
 }
 
@@ -69,10 +62,13 @@ $q_metode = mysqli_query($db, "SELECT * FROM metode_perlindungan ORDER BY nama_m
 include '../../layout/header.php';
 ?>
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
+
 <div class="d-flex">
     <?php include '../../layout/sidebar.php'; ?>
     
-    <main class="flex-grow-1 p-4" style="background-color: #f3f4f6; min-height:100vh; min-width: 0;">
+    <main class="flex-grow-1 p-4" style="background-color: #f3f4f6; min-height: 90vh; min-width: 0;">
         <div class="container-fluid">
             <div class="card shadow-lg rounded-3 overflow-hidden">
                 
@@ -88,79 +84,79 @@ include '../../layout/header.php';
 
                 <div class="card-body">
                     
-                    <div class="table-responsive">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div id="buttons-container"></div>
+                            
+                            <div id="length-container"></div>
+                        </div>
                         
-                        <table class="table table-bordered table-hover align-middle">
+                        <div id="search-container"></div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tableArsipVital" class="table table-bordered table-hover align-middle w-100" style="white-space: nowrap;">
                             <thead class="table-light text-center align-middle">
                                 <tr>
                                     <th>No</th>                                  
-                                    <th style="min-width: 250px;">Uraian Informasi</th>
-                                    <th style="min-width: 100px;">Asal</th>
-                                    <th style="min-width: 150px;">Kode Klasifikasi</th>
-                                    <th style="min-width: 150px;">Jenis</th>
-                                    <th style="min-width: 130px;">Nomor Arsip</th>
-                                    <th style="min-width: 100px;">Retensi</th>
-                                    <th style="min-width: 150px;">Lokasi</th>
-                                    <th style="min-width: 130px;">Metode</th>
-                                    <th style="min-width: 100px;">File</th>
-                                    <th style="min-width: 120px;">Aksi</th>
+                                    <th>Uraian Informasi</th>
+                                    <th>Asal</th>
+                                    <th>Kode Klasifikasi</th>
+                                    <th>Jenis</th>
+                                    <th>Nomor Arsip</th>
+                                    <th>Retensi</th>
+                                    <th>Lokasi</th>
+                                    <th>Metode</th>
+                                    <th>File</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                            <?php if (mysqli_num_rows($query_arsip) > 0) { ?>
-                                <?php while ($data = mysqli_fetch_assoc($query_arsip)) { ?>
-                                <tr>
-                                    <td class="text-center"><?= $nomor_urut++ ?></td>
-                                    
-                                    <td><?= htmlspecialchars($data['uraian_informasi']) ?></td>
-                                    
-                                    <td class="text-center">
-                                        <span class="badge <?= $data['asal_arsip'] == 'internal' ? 'bg-primary' : 'bg-success' ?>">
-                                            <?= ucfirst($data['asal_arsip']) ?>
-                                        </span>
-                                    </td>
-
-                                    <td>
-                                        <?php if (!empty($data['nama_sub'])) { ?>
-                                            <div class="fw-bold text-primary"><?= $data['id_sub'] ?></div>
-                                            <div class="small text-muted"><?= $data['nama_sub'] ?></div>
-                                        <?php } else { ?>
-                                            <div class="fw-bold text-primary"><?= $data['kode_klasifikasi'] ?></div>
-                                            <div class="small text-muted"><?= $data['deskripsi'] ?></div>
-                                        <?php } ?>
-                                    </td>
-
-                                    <td><?= htmlspecialchars($data['nama_jenis']) ?></td>
-                                    <td><?= htmlspecialchars($data['nomor_arsip']) ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($data['retensi']) ?> Tahun</td>
-                                    <td><?= htmlspecialchars($data['lokasi_simpan']) ?></td>
-                                    <td><?= htmlspecialchars($data['nama_metode']) ?></td>
-                                    
-                                    <td class="text-center">
-                                        <?php if (!empty($data['file_pdf'])): ?>
-                                            <a href="../../uploads/<?= $data['file_pdf'] ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Lihat PDF">
-                                                <i class="fas fa-file-pdf"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted small">-</span>
-                                        <?php endif; ?>
-                                    </td>
-
-                                    <td class="text-center">
-                                        <div class="d-flex justify-content-center gap-1">
-                                            <a href="arsip-vital-edit.php?id=<?= $data['id_arsip_vital'] ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
-                                            <a href="arsip-vital-hapus.php?id=<?= $data['id_arsip_vital'] ?>" onclick="return confirm('Anda Yakin Ingin Menghapus File ini?')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <?php if (mysqli_num_rows($query_arsip) > 0) { ?>
+                                    <?php while ($data = mysqli_fetch_assoc($query_arsip)) { ?>
+                                    <tr>
+                                        <td class="text-center"><?= $nomor_urut++ ?></td>
+                                        <td><?= htmlspecialchars($data['uraian_informasi']) ?></td>
+                                        <td class="text-center"><span class="badge <?= $data['asal_arsip'] == 'internal' ? 'bg-primary' : 'bg-success' ?>"><?= ucfirst($data['asal_arsip']) ?></span></td>
+                                        <td>
+                                            <?php if (!empty($data['nama_sub'])) { ?>
+                                                <div class="fw-bold text-primary"><?= $data['id_sub'] ?></div><div class="small text-muted"><?= $data['nama_sub'] ?></div>
+                                            <?php } else { ?>
+                                                <div class="fw-bold text-primary"><?= $data['kode_klasifikasi'] ?></div><div class="small text-muted"><?= $data['deskripsi'] ?></div>
+                                            <?php } ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($data['nama_jenis']) ?></td>
+                                        <td><?= htmlspecialchars($data['nomor_arsip']) ?></td>
+                                        <td class="text-center"><?= htmlspecialchars($data['retensi']) ?> Tahun</td>
+                                        <td><?= htmlspecialchars($data['lokasi_simpan']) ?></td>
+                                        <td><?= htmlspecialchars($data['nama_metode']) ?></td>
+                                        <td class="text-center">
+                                            <?php if (!empty($data['file_pdf'])): ?>
+                                                <a href="../../uploads/<?= $data['file_pdf'] ?>" target="_blank" class="btn btn-sm btn-outline-danger"><i class="fas fa-file-pdf"></i></a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1">
+                                                <a href="arsip-vital-edit.php?id=<?= $data['id_arsip_vital'] ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                                                <a href="arsip-vital-hapus.php?id=<?= $data['id_arsip_vital'] ?>" onclick="return confirm('Hapus?')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php } ?>
                                 <?php } ?>
-                            <?php } else { ?>
-                                <tr><td colspan="11" class="text-center py-5 text-muted">Data Kosong</td></tr>
-                            <?php } ?>
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                        <div id="info-container"></div>
+                        <div id="pagination-container"></div>
+                    </div>
+
                 </div>
+
             </div>
         </div>
     </main>
@@ -269,33 +265,168 @@ include '../../layout/header.php';
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php include '../../layout/footer.php'; ?>
+
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const parentSelect = document.getElementById("parent_kode");
-    const childSelect = document.getElementById("child_kode");
-    
-    if (parentSelect && childSelect) {
-        const originalOptions = Array.from(childSelect.options);
+    $(document).ready(function() {
+        if ($.fn.DataTable.isDataTable('#tableArsipVital')) {
+            $('#tableArsipVital').DataTable().destroy();
+        }
 
-        parentSelect.addEventListener("change", function() {
-            const selectedParentID = this.value; 
-
-            childSelect.innerHTML = '<option value="">-- Pilih Sub Klasifikasi --</option>';
-            childSelect.disabled = true;
-
-            if (selectedParentID) {
-                const filteredOptions = originalOptions.filter(opt => opt.getAttribute("data-parent") === selectedParentID);
-
-                if (filteredOptions.length > 0) {
-                    childSelect.disabled = false;
-                    filteredOptions.forEach(opt => childSelect.add(opt.cloneNode(true)));
-                } else {
-                    childSelect.innerHTML = '<option value="">-- Tidak ada sub klasifikasi --</option>';
+        var table = $('#tableArsipVital').DataTable({
+            // DOM Configuration:
+            // l = length, B = buttons, f = search, t = table, i = info, p = pagination
+            // Kita load semuanya ('lBfrtip'), tapi nanti kita pindah posisinya pakai Javascript
+            dom: 'lBfrtip', 
+            
+            buttons: [
+                {
+                    extend: 'copy',
+                    text: '<i class="fas fa-copy text-secondary"></i> Copy',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold', 
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'csv',
+                    text: '<i class="fas fa-file-csv text-primary"></i> CSV',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold',
+                    title: 'Data Arsip Vital',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'excel',
+                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold',
+                    title: 'Data Arsip Vital',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'pdf',
+                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold',
+                    title: 'Data Arsip Vital',
+                    orientation: 'landscape',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="fas fa-print text-dark"></i> Print',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold',
+                    title: 'Data Arsip Vital',
+                    exportOptions: { columns: ':not(:last-child)' }
                 }
-            }
+            ],
+
+            // Aktifkan Menu Pilihan Jumlah Data
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+
+            // === BAGIAN INI YANG MEMBUAT TOMBOL STAY ===
+            initComplete: function () {
+                var api = this.api();
+
+                // 1. Pindah Tombol Ekspor ke wadah khusus
+                api.buttons().container().appendTo('#buttons-container');
+
+                // 2. Pindah "Tampilkan 10 data" (Length Menu) ke wadah khusus
+                $('.dataTables_length').appendTo('#length-container');
+
+                // 3. Pindah "Menampilkan 1-10" (Info) ke bawah
+                $('.dataTables_info').appendTo('#info-container');
+
+                // 4. Pindah Pagination (Next/Prev) ke bawah
+                $('.dataTables_paginate').appendTo('#pagination-container');
+
+                // 5. Buat Custom Search di kanan atas
+                $('#search-container').html(`
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="customSearch" class="form-control border-start-0" placeholder="Cari data...">
+                    </div>
+                `);
+                
+                // Sembunyikan search bawaan agar tidak double
+                $('.dataTables_filter').hide();
+
+                // Fungsi Search Custom
+                $('#customSearch').on('keyup', function() {
+                    table.search(this.value).draw();
+                });
+            },
+            
+            language: {
+                search: "", 
+                lengthMenu: "_MENU_", // Hapus teks "Tampilkan", sisakan dropdown angkanya saja biar rapi
+                info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
+                infoEmpty: "Data kosong",
+                zeroRecords: "Tidak ditemukan",
+                paginate: {
+                    first: "Awal",
+                    last: "Akhir",
+                    next: '<i class="fas fa-chevron-right"></i>',
+                    previous: '<i class="fas fa-chevron-left"></i>'
+                }
+            },
+            pageLength: 10
         });
-    }
-});
+
+        // Script Dropdown Berjenjang (Tidak berubah)
+        const parentSelect = document.getElementById("parent_kode");
+        const childSelect = document.getElementById("child_kode");
+        if (parentSelect && childSelect) {
+            const originalOptions = Array.from(childSelect.options);
+            parentSelect.addEventListener("change", function() {
+                const selectedParentID = this.value; 
+                childSelect.innerHTML = '<option value="">-- Pilih Sub Klasifikasi --</option>';
+                childSelect.disabled = true;
+                if (selectedParentID) {
+                    const filteredOptions = originalOptions.filter(opt => opt.getAttribute("data-parent") === selectedParentID);
+                    if (filteredOptions.length > 0) {
+                        childSelect.disabled = false;
+                        filteredOptions.forEach(opt => childSelect.add(opt.cloneNode(true)));
+                    } else {
+                        childSelect.innerHTML = '<option value="">-- Tidak ada sub klasifikasi --</option>';
+                    }
+                }
+            });
+        }
+    });
 </script>
+
+<style>
+    /* Merapikan dropdown length menu */
+    #length-container select {
+        padding: 0.25rem 2rem 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+        background-color: #fff;
+        cursor: pointer;
+        display: inline-block;
+    }
+    /* Menghilangkan margin bawaan DataTables */
+    div.dataTables_length {
+        margin-bottom: 0 !important;
+        float: none !important;
+    }
+    div.dataTables_length label {
+        font-weight: normal;
+        margin-bottom: 0;
+    }
+</style>

@@ -2,12 +2,6 @@
 session_start();
 include '../../konektor.php';
 
-// Cek Login
-// if (!isset($_SESSION['user_id'])) {
-//     header("Location: ../../index.php");
-//     exit;
-// }
-
 // Default User ID
 $user_id = $_SESSION['user_id'] ?? 1;
 
@@ -16,32 +10,33 @@ $user_id = $_SESSION['user_id'] ?? 1;
 ============================================== */
 $kata_kunci  = mysqli_real_escape_string($db, $_GET['search'] ?? '');
 $klasifikasi = $_GET['klasifikasi'] ?? '';
-
-$kondisi = []; // Array penampung filter
-$where = "";   // Default variabel where kosong agar tidak error
+$kondisi = [];
 
 // A. Filter Kata Kunci
 if ($kata_kunci !== '') {
-    // Gunakan [] agar masuk ke array, dan HAPUS kata 'WHERE'
-    $kondisi[] = "(arsip_aktif.uraian_arsip LIKE '%$kata_kunci%' 
-                   OR arsip_aktif.uraian_berkas LIKE '%$kata_kunci%' 
-                   OR arsip_aktif.no_berkas LIKE '%$kata_kunci%')";
+    $kondisi[] = "(arsip_inaktif.uraian_arsip LIKE '%$kata_kunci%' 
+                   OR arsip_inaktif.nomor_arsip LIKE '%$kata_kunci%'
+                   OR kode_klasifikasi.kode_klasifikasi LIKE '%$kata_kunci%'
+                   OR kode_klasifikasi.deskripsi LIKE '%$kata_kunci%' 
+                   OR arsip_inaktif.id_jenis LIKE '%$kata_kunci%'
+                   OR arsip_inaktif.keterangan LIKE '%$kata_kunci%'
+                   )";
 }
 
 // B. Filter Klasifikasi
 if ($klasifikasi !== '' && $klasifikasi !== 'semua') {
-    $kondisi[] = "arsip_aktif.id_kode = '$klasifikasi'";
+    $kondisi[] = "arsip_inaktif.id_kode = '$klasifikasi'";
 }
 
-// C. PENYUSUNAN VARIABEL WHERE (INI YANG HILANG DI KODE ANDA)
+$where = '';
 if (!empty($kondisi)) {
-    // Gabungkan semua kondisi dengan 'AND' dan tambahkan kata 'WHERE' di depan
     $where = "WHERE " . implode(" AND ", $kondisi);
 }
 
 // ==========================================
 // 2. QUERY DATA UTAMA
 // ==========================================
+$nomor_urut = 1;
 $query_string = "
     SELECT arsip_inaktif.*, 
         kode_klasifikasi.kode_klasifikasi,
@@ -50,12 +45,12 @@ $query_string = "
         sub_klasifikasi.id_sub,
         sub_sub_klasifikasi.nama_subsub,
         sub_sub_klasifikasi.id_subsub,
-        tingkat_perkembangan.nama_tingkat  /* <--- TAMBAHAN 1: Ambil kolom nama */
+        tingkat_perkembangan.nama_tingkat
     FROM arsip_inaktif
     LEFT JOIN kode_klasifikasi ON arsip_inaktif.id_kode = kode_klasifikasi.id_kode
     LEFT JOIN sub_klasifikasi ON arsip_inaktif.id_sub = sub_klasifikasi.id_sub
     LEFT JOIN sub_sub_klasifikasi ON arsip_inaktif.id_subsub = sub_sub_klasifikasi.id_subsub
-    LEFT JOIN tingkat_perkembangan ON arsip_inaktif.id_tingkat = tingkat_perkembangan.id_tingkat /* <--- TAMBAHAN 2: Sambungkan tabelnya */
+    LEFT JOIN tingkat_perkembangan ON arsip_inaktif.id_tingkat = tingkat_perkembangan.id_tingkat
     $where
     ORDER BY arsip_inaktif.id_arsip_inaktif DESC
 ";
@@ -71,6 +66,9 @@ $q_tingkat = mysqli_query($db, "SELECT * FROM tingkat_perkembangan ORDER BY id_t
 include '../../layout/header.php';
 ?>
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
+
 <div class="d-flex">
     <?php include '../../layout/sidebar.php'; ?>
 
@@ -79,61 +77,70 @@ include '../../layout/header.php';
             <div class="card shadow-lg rounded-3 overflow-hidden">
                 
                 <div class="card-header text-white d-flex justify-content-between align-items-center"
-                     style="background: linear-gradient(90deg, #4f46e5, #4338ca);"> <h5 class="mb-0 fw-bold">
+                     style="background: linear-gradient(90deg, #4f46e5, #4338ca);"> 
+                    <h5 class="mb-0 fw-bold">
                         <i class="fas fa-file-invoice me-2"></i> Data Arsip Inaktif
                     </h5>
                     <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalTambah">
                         <i class="fas fa-plus"></i> Tambah Data
                     </button>
                 </div>
-                    <div class="card-body">
+
+                <div class="card-body">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2" id="top-container">
+                        <div class="d-flex align-items-center gap-2">
+                            <div id="buttons-container"></div>
+                            <div id="length-container"></div>
+                        </div>
+                        <div id="search-container"></div>
+                    </div>
+
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle">
+                        <table id="tableArsipInaktif" class="table table-bordered table-hover align-middle w-100" style="white-space: nowrap;">
                             <thead class="table-light text-center align-middle">
                                 <tr>
                                     <th>No</th>
-                                    <th style="min-width: 200px;">Uraian Informasi Arsip</th>
-                                    <th style="min-width: 120px;">No Arsip/Berkas</th>
-                                    <th style="min-width: 150px;">Kode Klasifikasi</th>
-                                    <th style="min-width: 150px;">Jenis/Series Arsip</th>
-                                    <th style="min-width: 120px;">Tahun</th>
-                                    <th style="min-width: 120px;">Retensi</th>
-                                    <th style="min-width: 120px;">Jumlah</th>
-                                    <th style="min-width: 120px;"> Tingkat Perkembangan</th>
-                                    <th style="min-width: 150px;">Keterangan</th>
-                                    <th style="min-width: 120px;">File</th>
-                                    <th style="min-width: 120px;">Aksi</th>
+                                    <th>Uraian Informasi Arsip</th>
+                                    <th>No Arsip/Berkas</th>
+                                    <th>Kode Klasifikasi</th>
+                                    <th>Jenis/Series Arsip</th>
+                                    <th>Tahun</th>
+                                    <th>Retensi</th>
+                                    <th>Jumlah</th>
+                                    <th>Tingkat Perkembangan</th>
+                                    <th>Keterangan</th>
+                                    <th>File</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                            <?php $no = 1; if (mysqli_num_rows($query_arsip) > 0) { ?>
+                            <?php if (mysqli_num_rows($query_arsip) > 0) { ?>
                                 <?php while ($data = mysqli_fetch_assoc($query_arsip)) { ?>
                                 <tr>
-                                    <td class="text-center"><?= $no++ ?></td>
+                                    <td class="text-center"><?= $nomor_urut++ ?></td>
                                     
-                                    <td><?= htmlspecialchars($data['uraian_arsip'] ?? '') ?></td>
+                                    <td style="white-space: normal; min-width: 300px;">
+                                        <?= htmlspecialchars($data['uraian_arsip'] ?? '') ?>
+                                    </td>
                                     
                                     <td class="text-center fw-bold"><?= htmlspecialchars($data['nomor_arsip'] ?? '') ?></td>
                                     
                                     <td>
                                         <?php if (!empty($data['nama_subsub'])) { ?>
-                                            <div class="fw-bold text-primary"><?= $data['id_subsub'] ?? '' ?></div>
-                                            <div class="text-muted"><?= $data['nama_subsub'] ?? '' ?></div>
+                                            <div class="fw-bold text-primary"><?= htmlspecialchars($data['id_subsub'] ?? '') ?></div>
+                                            <div class="text-muted small"><?= htmlspecialchars($data['nama_subsub'] ?? '') ?></div>
                                         <?php } elseif (!empty($data['nama_sub'])) { ?>
-                                            <div class="fw-bold text-primary"><?= $data['id_sub'] ?? '' ?></div>
-                                            <div class="text-muted"><?= $data['nama_sub'] ?? '' ?></div>
+                                            <div class="fw-bold text-primary"><?= htmlspecialchars($data['id_sub'] ?? '') ?></div>
+                                            <div class="text-muted small"><?= htmlspecialchars($data['nama_sub'] ?? '') ?></div>
                                         <?php } else { ?>
-                                            <div class="fw-bold text-primary"><?= $data['kode_klasifikasi'] ?? '' ?></div>
-                                            <div class="text-muted"><?= $data['deskripsi'] ?? '' ?></div>
+                                            <div class="fw-bold text-primary"><?= htmlspecialchars($data['kode_klasifikasi'] ?? '') ?></div>
+                                            <div class="text-muted small"><?= htmlspecialchars($data['deskripsi'] ?? '') ?></div>
                                         <?php } ?>
                                     </td>
 
-                                    <td><?= htmlspecialchars($data['id_jenis'] ?? '') ?></td>
-                                    
-                                    <td class="text-center"><?= htmlspecialchars($data['kurun_waktu'] ?? '') ?></td>
-                                    
+                                    <td><?= htmlspecialchars($data['id_jenis'] ?? '') ?></td> <td class="text-center"><?= htmlspecialchars($data['kurun_waktu'] ?? '') ?></td>
                                     <td class="text-center"><?= htmlspecialchars($data['retensi'] ?? '') ?></td>
-                                    
                                     <td class="text-center"><?= htmlspecialchars($data['jumlah'] ?? '') ?></td>
                                     
                                     <td class="text-center">
@@ -154,18 +161,22 @@ include '../../layout/header.php';
 
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-1">
-                                            <a href="#" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                                            <a href="arsip-inaktif-edit.php?id=<?= $data['id_arsip_inaktif'] ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
                                             <a href="arsip-inaktif-hapus.php?id=<?= $data['id_arsip_inaktif'] ?>" onclick="return confirm('Hapus?')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>
                                 </tr>
                                 <?php } ?>
-                            <?php } else { ?>
-                                <tr><td colspan="12" class="text-center py-4 text-muted">Data Kosong / Tidak Ditemukan</td></tr>
                             <?php } ?>
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap" id="bottom-container">
+                        <div id="info-container"></div>
+                        <div id="pagination-container"></div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -189,14 +200,11 @@ include '../../layout/header.php';
                             <label class="form-label fw-bold">Uraian Informasi Arsip</label>
                             <textarea name="uraian_arsip" class="form-control" rows="2" required></textarea>
                         </div>
-                        
                         <div class="col-12">
                             <label class="form-label fw-bold">No Arsip/Berkas</label>
                             <input type="text" name="nomor_arsip" class="form-control" required>
                         </div>
-
                         <div class="col-12"><hr></div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">1. Kode Klasifikasi Induk</label>
                             <select name="id_kode" id="parent_kode" class="form-select" required>
@@ -206,7 +214,6 @@ include '../../layout/header.php';
                                 <?php endwhile; ?>
                             </select>
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">2. Sub Klasifikasi</label>
                             <select name="id_sub" id="child_kode" class="form-select" required disabled>
@@ -216,7 +223,6 @@ include '../../layout/header.php';
                                 <?php endwhile; ?>
                             </select>
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">3. Sub-Sub (Opsional)</label>
                             <select name="id_subsub" id="grandchild_kode" class="form-select" disabled>
@@ -226,49 +232,36 @@ include '../../layout/header.php';
                                 <?php endwhile; ?>
                             </select>
                         </div>
-
                         <div class="col-12"><hr></div>
- 
                         <div class="col-12">
                             <label class="form-label fw-bold">Jenis/Series Arsip</label>
-                            <input type="text" name="jenis_arsip" id="input_jenis_arsip" class="form-control" 
-                                placeholder="Terisi otomatis sesuai klasifikasi..." readonly>
+                            <input type="text" name="jenis_arsip" id="input_jenis_arsip" class="form-control" placeholder="Terisi otomatis..." readonly>
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">Kurun Waktu (Tahun)</label>
                             <input type="number" name="kurun_waktu" class="form-control" placeholder="2024">
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">Retensi Arsip</label>
                             <input type="text" name="retensi" class="form-control" placeholder="Contoh: 5 Tahun / 2029">
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">Jumlah</label>
                             <input type="text" name="jumlah" class="form-control" placeholder="Contoh: 1 Berkas / 5 Lembar">
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-semibold">Tingkat Perkembangan</label>
                             <select name="id_tingkat" class="form-select" required>
                                 <option value="">-- Pilih --</option>
-                                <?php 
-                                // Reset pointer query tingkat perkembangan
-                                if ($q_tingkat) { mysqli_data_seek($q_tingkat, 0); }
-                                while($tp = mysqli_fetch_assoc($q_tingkat)): 
-                                ?>
+                                <?php if ($q_tingkat) { mysqli_data_seek($q_tingkat, 0); } while($tp = mysqli_fetch_assoc($q_tingkat)): ?>
                                     <option value="<?= $tp['id_tingkat'] ?>"><?= $tp['nama_tingkat'] ?></option>
                                 <?php endwhile; ?>
                             </select>
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">Keterangan</label>
                             <textarea name="keterangan" class="form-control" rows="2"></textarea>
                         </div>
-
                         <div class="col-12">
                             <label class="form-label fw-bold">Upload File (PDF)</label>
                             <input type="file" name="file_arsip" class="form-control" accept=".pdf" required>
@@ -276,7 +269,6 @@ include '../../layout/header.php';
                     </div>
                 </form>
             </div>
-            
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                 <button type="submit" form="formTambah" name="simpan" class="btn btn-success">Simpan Data</button>
@@ -285,85 +277,177 @@ include '../../layout/header.php';
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php include '../../layout/footer.php'; ?>
+
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const parentSelect = document.getElementById("parent_kode");
-    const childSelect = document.getElementById("child_kode");
-    const grandChildSelect = document.getElementById("grandchild_kode");
-    const formTambah = document.getElementById("formTambah");
-    
-    // Target Input yang akan diisi otomatis
-    const jenisInput = document.getElementById("input_jenis_arsip");
-
-    // --- FUNGSI AUTOFILL ---
-    function autoFillJenis(selectElement) {
-        if (selectElement.value === "") return;
-        const selectedText = selectElement.options[selectElement.selectedIndex].text;
-        const parts = selectedText.split(' - ');
-        
-        if (parts.length > 1) {
-            jenisInput.value = parts.slice(1).join(' - ');
-        } else {
-            jenisInput.value = selectedText;
+    $(document).ready(function() {
+        if ($.fn.DataTable.isDataTable('#tableArsipInaktif')) {
+            $('#tableArsipInaktif').DataTable().destroy();
         }
-    }
 
-    if (parentSelect && childSelect && grandChildSelect) {
-        
-        const childOptions = Array.from(childSelect.options);
-        const grandChildOptions = Array.from(grandChildSelect.options);
+        var table = $('#tableArsipInaktif').DataTable({
+            dom: 'lBfrtip', 
+            
+            buttons: [
+                { 
+                    extend: 'copy', 
+                    text: '<i class="fas fa-copy text-secondary"></i> Copy', 
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold', 
+                    exportOptions: { columns: ':not(:last-child)' } 
+                },
+                {
+                    extend: 'csv', // <--- TOMBOL CSV BARU
+                    text: '<i class="fas fa-file-csv text-primary"></i> CSV',
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold',
+                    title: 'Data Arsip Vital',
+                    exportOptions: { columns: ':not(:last-child)' }
+                },
+                { 
+                    extend: 'excel', 
+                    text: '<i class="fas fa-file-excel text-success"></i> Excel', 
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold', 
+                    title: 'Data Arsip Inaktif', 
+                    exportOptions: { columns: ':not(:last-child)' } 
+                },
+                { 
+                    extend: 'pdf', 
+                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF', 
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold', 
+                    title: 'Data Arsip Inaktif', 
+                    orientation: 'landscape', 
+                    exportOptions: { columns: ':not(:last-child)' } },
+                { 
+                    extend: 'print', 
+                    text: '<i class="fas fa-print text-dark"></i> Print', 
+                    className: 'btn btn-light border btn-sm me-2 shadow-sm fw-bold', 
+                    title: 'Data Arsip Inaktif', 
+                    exportOptions: { columns: ':not(:last-child)' } }
+            ],
 
-        // 1. INDUK BERUBAH
-        parentSelect.addEventListener("change", function() {
-            const selectedParentID = this.value;
-            autoFillJenis(this);
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
 
-            childSelect.innerHTML = '<option value="">-- Pilih Sub Klasifikasi --</option>';
-            childSelect.disabled = true;
-            grandChildSelect.innerHTML = '<option value="">-- Pilih Sub Dulu --</option>';
-            grandChildSelect.disabled = true;
+            initComplete: function () {
+                var api = this.api();
+                api.buttons().container().appendTo('#buttons-container');
+                $('.dataTables_length').appendTo('#length-container');
+                $('.dataTables_info').appendTo('#info-container');
+                $('.dataTables_paginate').appendTo('#pagination-container');
 
-            if (selectedParentID) {
-                const filtered = childOptions.filter(opt => opt.getAttribute("data-parent") === selectedParentID);
-                if (filtered.length > 0) {
-                    childSelect.disabled = false;
-                    filtered.forEach(opt => childSelect.add(opt.cloneNode(true)));
-                } else {
-                    childSelect.innerHTML = '<option value="">-- Tidak ada sub klasifikasi --</option>';
-                }
+                $('#search-container').html(`
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="customSearch" class="form-control border-start-0" placeholder="Cari data...">
+                    </div>
+                `);
+                $('.dataTables_filter').hide();
+                $('#customSearch').on('keyup', function() {
+                    table.search(this.value).draw();
+                });
+            },
+            
+            language: {
+                search: "",
+                lengthMenu: "_MENU_",
+                info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
+                infoEmpty: "Data kosong",
+                zeroRecords: "Tidak ditemukan",
+                paginate: { first: "Awal", last: "Akhir", next: '<i class="fas fa-chevron-right"></i>', previous: '<i class="fas fa-chevron-left"></i>' }
+            },
+            pageLength: 10
+        });
+
+        // Script Dropdown Berjenjang (Tidak Berubah)
+        const parentSelect = document.getElementById("parent_kode");
+        const childSelect = document.getElementById("child_kode");
+        const grandChildSelect = document.getElementById("grandchild_kode");
+        const uraianInput = document.getElementById("input_jenis_arsip");
+        const formTambah = document.getElementById("formTambah");
+
+        function autoFillJenis(selectElement) {
+            if (selectElement.value === "") return;
+            const selectedText = selectElement.options[selectElement.selectedIndex].text;
+            const parts = selectedText.split(' - ');
+            if (parts.length > 1) {
+                uraianInput.value = parts.slice(1).join(' - ');
+            } else {
+                uraianInput.value = selectedText;
             }
-        });
+        }
 
-        // 2. SUB BERUBAH
-        childSelect.addEventListener("change", function() {
-            const selectedSubID = this.value;
-            autoFillJenis(this);
+        if (parentSelect && childSelect && grandChildSelect) {
+            const childOptions = Array.from(childSelect.options);
+            const grandChildOptions = Array.from(grandChildSelect.options);
 
-            grandChildSelect.innerHTML = '<option value="">-- Pilih Sub-Sub Klasifikasi --</option>';
-            grandChildSelect.disabled = true;
+            parentSelect.addEventListener("change", function() {
+                const selectedParentID = this.value; 
+                autoFillJenis(this);
+                childSelect.innerHTML = '<option value="">-- Pilih Sub Klasifikasi --</option>';
+                childSelect.disabled = true;
+                grandChildSelect.innerHTML = '<option value="">-- Pilih Sub Dulu --</option>';
+                grandChildSelect.disabled = true;
 
-            if (selectedSubID) {
-                const filtered = grandChildOptions.filter(opt => opt.getAttribute("data-parent") === selectedSubID);
-                if (filtered.length > 0) {
-                    grandChildSelect.disabled = false;
-                    filtered.forEach(opt => grandChildSelect.add(opt.cloneNode(true)));
-                } else {
-                    grandChildSelect.innerHTML = '<option value="">-- Tidak ada sub-sub klasifikasi --</option>';
+                if (selectedParentID) {
+                    const filtered = childOptions.filter(opt => opt.getAttribute("data-parent") === selectedParentID);
+                    if (filtered.length > 0) {
+                        childSelect.disabled = false;
+                        filtered.forEach(opt => childSelect.add(opt.cloneNode(true)));
+                    } else {
+                        childSelect.innerHTML = '<option value="">-- Tidak ada sub klasifikasi --</option>';
+                    }
                 }
-            }
-        });
+            });
 
-        // 3. SUB-SUB BERUBAH
-        grandChildSelect.addEventListener("change", function() {
-            autoFillJenis(this);
-        });
+            childSelect.addEventListener("change", function() {
+                const selectedSubID = this.value;
+                autoFillJenis(this);
+                grandChildSelect.innerHTML = '<option value="">-- Pilih Sub-Sub Klasifikasi --</option>';
+                grandChildSelect.disabled = true;
 
-        // 4. Safety Net Submit
-        formTambah.addEventListener("submit", function() {
-            childSelect.disabled = false;
-            grandChildSelect.disabled = false;
-        });
-    }
-});
+                if (selectedSubID) {
+                    const filtered = grandChildOptions.filter(opt => opt.getAttribute("data-parent") === selectedSubID);
+                    if (filtered.length > 0) {
+                        grandChildSelect.disabled = false;
+                        filtered.forEach(opt => grandChildSelect.add(opt.cloneNode(true)));
+                    } else {
+                        grandChildSelect.innerHTML = '<option value="">-- Tidak ada sub-sub klasifikasi --</option>';
+                    }
+                }
+            });
+
+            grandChildSelect.addEventListener("change", function() {
+                autoFillJenis(this);
+            });
+
+            formTambah.addEventListener("submit", function() {
+                childSelect.disabled = false;
+                grandChildSelect.disabled = false;
+            });
+        }
+    });
 </script>
+
+<style>
+    #length-container select {
+        padding: 0.25rem 2rem 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+        background-color: #fff;
+        cursor: pointer;
+        display: inline-block;
+    }
+    div.dataTables_length { margin-bottom: 0 !important; float: none !important; }
+    div.dataTables_length label { font-weight: normal; margin-bottom: 0; }
+</style>
